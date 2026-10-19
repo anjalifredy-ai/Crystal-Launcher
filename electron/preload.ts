@@ -10,31 +10,31 @@ contextBridge.exposeInMainWorld('crystal', {
   isVersionInstalled: (id: string) => ipcRenderer.invoke('versions:isInstalled', id),
   downloadVersion: (id: string, url: string) => ipcRenderer.invoke('versions:download', id, url),
   getVersionsRoot: () => ipcRenderer.invoke('versions:getRoot'),
-  onDownloadProgress: (callback: (data: any) => void) => {
-    const listener = (_: any, data: any) => callback(data)
-    ipcRenderer.on('versions:downloadProgress', listener)
-    return () => ipcRenderer.removeListener('versions:downloadProgress', listener)
+  onDownloadProgress: (cb: any) => {
+    const l = (_: any, d: any) => cb(d)
+    ipcRenderer.on('versions:downloadProgress', l)
+    return () => ipcRenderer.removeListener('versions:downloadProgress', l)
   },
 
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
   getActiveAccount: () => ipcRenderer.invoke('accounts:active'),
-  addOfflineAccount: (username: string) => ipcRenderer.invoke('accounts:addOffline', username),
+  addOfflineAccount: (u: string) => ipcRenderer.invoke('accounts:addOffline', u),
   setActiveAccount: (id: string) => ipcRenderer.invoke('accounts:setActive', id),
   removeAccount: (id: string) => ipcRenderer.invoke('accounts:remove', id),
 
   findJava: () => ipcRenderer.invoke('java:find'),
   ensureJava: (major: number) => ipcRenderer.invoke('java:ensure', major),
-  onJavaProgress: (callback: (data: any) => void) => {
-    const listener = (_: any, data: any) => callback(data)
-    ipcRenderer.on('java:progress', listener)
-    return () => ipcRenderer.removeListener('java:progress', listener)
+  onJavaProgress: (cb: any) => {
+    const l = (_: any, d: any) => cb(d)
+    ipcRenderer.on('java:progress', l)
+    return () => ipcRenderer.removeListener('java:progress', l)
   },
 
   launchGame: (versionId: string) => ipcRenderer.invoke('game:launch', versionId),
-  onGameProgress: (callback: (data: any) => void) => {
-    const listener = (_: any, data: any) => callback(data)
-    ipcRenderer.on('game:progress', listener)
-    return () => ipcRenderer.removeListener('game:progress', listener)
+  onGameProgress: (cb: any) => {
+    const l = (_: any, d: any) => cb(d)
+    ipcRenderer.on('game:progress', l)
+    return () => ipcRenderer.removeListener('game:progress', l)
   },
 
   listContent: (type: string) => ipcRenderer.invoke('content:list', type),
@@ -44,9 +44,24 @@ contextBridge.exposeInMainWorld('crystal', {
   openContentFolder: (type: string) => ipcRenderer.invoke('content:openFolder', type),
   modrinthInstall: (projectId: string, gameVersion: string | null, loader: string, type: string) =>
     ipcRenderer.invoke('content:modrinthInstall', projectId, gameVersion, loader, type),
-  onInstallProgress: (callback: (data: any) => void) => {
-    const listener = (_: any, data: any) => callback(data)
-    ipcRenderer.on('content:installProgress', listener)
-    return () => ipcRenderer.removeListener('content:installProgress', listener)
+  onInstallProgress: (cb: any) => {
+    const l = (_: any, d: any) => cb(d)
+    ipcRenderer.on('content:installProgress', l)
+    return () => ipcRenderer.removeListener('content:installProgress', l)
   },
+
+  installLoader: (loader: string, mcVersion: string, loaderVersion: string | null) =>
+    ipcRenderer.invoke('loader:install', loader, mcVersion, loaderVersion),
+  onLoaderProgress: (cb: any) => {
+    const l = (_: any, d: any) => cb(d)
+    ipcRenderer.on('loader:progress', l)
+    return () => ipcRenderer.removeListener('loader:progress', l)
+  },
+
+  listProfiles: () => ipcRenderer.invoke('profiles:list'),
+  getActiveProfile: () => ipcRenderer.invoke('profiles:active'),
+  upsertProfile: (data: any) => ipcRenderer.invoke('profiles:upsert', data),
+  setActiveProfile: (id: string) => ipcRenderer.invoke('profiles:setActive', id),
+  setProfileLaunchVersion: (id: string, launchVersionId: string) =>
+    ipcRenderer.invoke('profiles:setLaunchVersion', id, launchVersionId),
 })
