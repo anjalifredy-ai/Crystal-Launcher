@@ -15,7 +15,16 @@ import {
   removeAccount,
 } from './accounts'
 import { findJava } from './java'
+import { ensureJava } from './javaRuntime'
 import { launchGame } from './launcher'
+import {
+  listContent,
+  setContentEnabled,
+  deleteContent,
+  openContentFolder,
+  modrinthInstall,
+  ContentType,
+} from './contentManager'
 
 let mainWindow: BrowserWindow | null = null
 const isDev = !app.isPackaged
@@ -28,7 +37,7 @@ function createWindow() {
     minHeight: 700,
     frame: false,
     titleBarStyle: 'hidden',
-    backgroundColor: '#0a0a0f',
+    backgroundColor: '#070a10',
     show: false,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
@@ -38,25 +47,17 @@ function createWindow() {
     },
   })
 
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
-  } else {
-    mainWindow.loadFile(join(__dirname, '../dist/index.html'))
-  }
+  if (isDev) mainWindow.loadURL('http://localhost:5173')
+  else mainWindow.loadFile(join(__dirname, '../dist/index.html'))
 
   mainWindow.once('ready-to-show', () => mainWindow?.show())
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
   })
-
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+  mainWindow.on('closed', () => { mainWindow = null })
 }
 
-// Window
 ipcMain.handle('window:minimize', () => mainWindow?.minimize())
 ipcMain.handle('window:maximize', () => {
   if (mainWindow?.isMaximized()) mainWindow.unmaximize()
@@ -65,7 +66,6 @@ ipcMain.handle('window:maximize', () => {
 ipcMain.handle('window:close', () => mainWindow?.close())
 ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
 
-// Versions
 ipcMain.handle('versions:fetchManifest', async () => {
   try {
     const manifest = await fetchVersionManifest()
@@ -97,7 +97,6 @@ ipcMain.handle('versions:download', async (_e, versionId: string, versionUrl: st
 
 ipcMain.handle('versions:getRoot', () => getVersionsRoot())
 
-// Accounts
 ipcMain.handle('accounts:list', () => listAccounts())
 ipcMain.handle('accounts:active', () => getActiveAccount())
 ipcMain.handle('accounts:addOffline', (_e, username: string) => {
@@ -107,24 +106,52 @@ ipcMain.handle('accounts:addOffline', (_e, username: string) => {
     return { success: false, error: err.message }
   }
 })
-ipcMain.handle('accounts:setActive', (_e, id: string) => {
-  return { success: true, account: setActiveAccount(id) }
-})
+ipcMain.handle('accounts:setActive', (_e, id: string) => ({ success: true, account: setActiveAccount(id) }))
 ipcMain.handle('accounts:remove', (_e, id: string) => {
   removeAccount(id)
   return { success: true }
 })
 
-// Java
 ipcMain.handle('java:find', async () => {
   const info = await findJava(8)
   return info ? { success: true, ...info } : { success: false, error: 'Java not found' }
 })
 
-// Launch
-ipcMain.handle('game:launch', async (_e, versionId: string) => {
-  return launchGame(versionId)
+ipcMain.handle('java:ensure', async (_e, major: number) => {
+  try {
+    const info = await ensureJava(major || 17, (stage, pct) => {
+      mainWindow?.webContents.send('java:progress', { stage, percent: pct })
+    })
+    return info ? { success: true, ...info } : { success: false, error: 'Failed' }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
 })
+
+ipcMain.handle('game:launch', async (_e, versionId: string) => {
+  return launchGame(versionId, (stage, pct) => {
+    mainWindow?.webContents.send('game:progress', { stage, percent: pct })
+  })
+})
+
+// Content (mods / resourcepacks / shaderpacks)
+ipcMain.handle('content:list', (_e, type: ContentType) => listContent(type))
+ipcMain.handle('content:setEnabled', (_e, type: ContentType, name: string, enabled: boolean) =>
+  setContentEnabled(type, name, enabled)
+)
+ipcMain.handle('content:delete', (_e, type: ContentType, name: string) => deleteContent(type, name))
+ipcMain.handle('content:openFolder', (_e, type: ContentType) => {
+  openContentFolder(type)
+  return { success: true }
+})
+ipcMain.handle(
+  'content:modrinthInstall',
+  async (_e, projectId: string, gameVersion: string | null, loader: string, type: ContentType) => {
+    return modrinthInstall(projectId, gameVersion, loader, type, (stage, pct) => {
+      mainWindow?.webContents.send('content:installProgress', { stage, percent: pct })
+    })
+  }
+)
 
 app.whenReady().then(() => {
   createWindow()
@@ -135,10 +162,4 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
-})
-
-app.on('web-contents-created', (_, contents) => {
-  contents.on('will-navigate', (event, url) => {
-    if (url !== contents.getURL()) event.preventDefault()
-  })
 })
