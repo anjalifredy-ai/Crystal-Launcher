@@ -17,6 +17,13 @@ interface Account {
   createdAt: string
 }
 
+interface ContentFile {
+  name: string
+  path: string
+  enabled: boolean
+  size: number
+}
+
 interface CrystalAPI {
   minimize: () => Promise<void>
   maximize: () => Promise<void>
@@ -32,9 +39,7 @@ interface CrystalAPI {
   isVersionInstalled: (id: string) => Promise<boolean>
   downloadVersion: (id: string, url: string) => Promise<{ success: boolean; path?: string; error?: string }>
   getVersionsRoot: () => Promise<string>
-  onDownloadProgress: (
-    callback: (data: { versionId: string; stage: string; percent: number }) => void
-  ) => () => void
+  onDownloadProgress: (callback: (data: any) => void) => () => void
 
   listAccounts: () => Promise<Account[]>
   getActiveAccount: () => Promise<Account | null>
@@ -43,7 +48,23 @@ interface CrystalAPI {
   removeAccount: (id: string) => Promise<{ success: boolean }>
 
   findJava: () => Promise<{ success: boolean; path?: string; version?: string; major?: number; error?: string }>
+  ensureJava: (major: number) => Promise<{ success: boolean; path?: string; major?: number; error?: string }>
+  onJavaProgress: (callback: (data: any) => void) => () => void
+
   launchGame: (versionId: string) => Promise<{ success: boolean; error?: string; pid?: number }>
+  onGameProgress: (callback: (data: any) => void) => () => void
+
+  listContent: (type: string) => Promise<ContentFile[]>
+  setContentEnabled: (type: string, name: string, enabled: boolean) => Promise<ContentFile[]>
+  deleteContent: (type: string, name: string) => Promise<ContentFile[]>
+  openContentFolder: (type: string) => Promise<{ success: boolean }>
+  modrinthInstall: (
+    projectId: string,
+    gameVersion: string | null,
+    loader: string,
+    type: string
+  ) => Promise<{ success: boolean; fileName?: string; error?: string }>
+  onInstallProgress: (callback: (data: any) => void) => () => void
 }
 
 interface Window {
