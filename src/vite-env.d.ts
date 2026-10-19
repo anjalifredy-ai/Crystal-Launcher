@@ -24,6 +24,17 @@ interface ContentFile {
   size: number
 }
 
+interface Profile {
+  id: string
+  name: string
+  loader: string
+  mcVersion: string
+  launchVersionId: string | null
+  loaderVersion: string | null
+  createdAt: string
+  active: boolean
+}
+
 interface CrystalAPI {
   minimize: () => Promise<void>
   maximize: () => Promise<void>
@@ -65,6 +76,22 @@ interface CrystalAPI {
     type: string
   ) => Promise<{ success: boolean; fileName?: string; error?: string }>
   onInstallProgress: (callback: (data: any) => void) => () => void
+
+  installLoader: (
+    loader: string,
+    mcVersion: string,
+    loaderVersion: string | null
+  ) => Promise<{ success: boolean; versionId?: string; error?: string }>
+  onLoaderProgress: (callback: (data: any) => void) => () => void
+
+  listProfiles: () => Promise<Profile[]>
+  getActiveProfile: () => Promise<Profile | null>
+  upsertProfile: (data: Partial<Profile> & { name: string; loader: string; mcVersion: string }) => Promise<{
+    success: boolean
+    profile?: Profile
+  }>
+  setActiveProfile: (id: string) => Promise<{ success: boolean; profile?: Profile | null }>
+  setProfileLaunchVersion: (id: string, launchVersionId: string) => Promise<{ success: boolean; profile?: Profile | null }>
 }
 
 interface Window {
