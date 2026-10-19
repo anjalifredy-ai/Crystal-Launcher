@@ -1,11 +1,13 @@
 import { spawn, ChildProcess } from 'child_process'
 import { join } from 'path'
-import { getVersionJson, getClasspath, isVersionInstalled } from './versionManager'
-import { getNativesDir, getAssetsDir, getRootDir } from './paths'
+import { existsSync } from 'fs'
+import { getClasspath, isVersionInstalled } from './versionManager'
+import { getNativesDir, getAssetsDir, getRootDir, getVersionDir, getLibrariesDir } from './paths'
 import { requiredJavaMajor } from './java'
 import { ensureJava } from './javaRuntime'
 import { getActiveAccount } from './accounts'
 import { getContentDir } from './contentManager'
+import { resolveVersionJson } from './loaders'
 
 let gameProcess: ChildProcess | null = null
 
@@ -35,21 +37,55 @@ function replaceTokens(str: string, map: Record<string, string>): string {
   return str.replace(/\$\{([^}]+)\}/g, (_, key) => map[key] ?? '')
 }
 
+function buildClasspath(versionId: string, versionJson: any): string {
+  const libsDir = getLibrariesDir()
+  const paths: string[] = []
+  for (const lib of versionJson.libraries || []) {
+    if (lib.rules) {
+      let allow = false
+      for (const rule of lib.rules) {
+        let match = true
+        if (rule.os?.name) {
+          const osName = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'osx' : 'linux'
+          if (rule.os.name !== osName) match = false
+        }
+        if (match) allow = rule.action === 'allow'
+      }
+      if (!allow) continue
+    }
+    if (lib.downloads?.artifact?.path) {
+      paths.push(join(libsDir, lib.downloads.artifact.path))
+    } else if (lib.name) {
+      const parts = lib.name.split(':')
+      const rel = join(parts[0].replace(/\./g, '/'), parts[1], parts[2], `${parts[1]}-${parts[2]}.jar`)
+      paths.push(join(libsDir, rel))
+    }
+  }
+  // client jar: version jar or inherited
+  let jar = join(getVersionDir(versionId), `${versionId}.jar`)
+  if (!existsSync(jar) && versionJson.inheritsFrom) {
+    jar = join(getVersionDir(versionJson.inheritsFrom), `${versionJson.inheritsFrom}.jar`)
+  }
+  paths.push(jar)
+  return paths.filter((p) => existsSync(p)).join(process.platform === 'win32' ? ';' : ':')
+}
+
 export async function launchGame(
   versionId: string,
   onProgress?: (stage: string, pct: number) => void
 ): Promise<{ success: boolean; error?: string; pid?: number }> {
-  if (!isVersionInstalled(versionId)) {
-    return { success: false, error: 'Version not installed. Install it first from Versions tab.' }
+  const versionJson = resolveVersionJson(versionId)
+  if (!versionJson) {
+    // fallback installed check
+    if (!isVersionInstalled(versionId)) {
+      return { success: false, error: 'Version not installed. Create profile & Install first.' }
+    }
+    return { success: false, error: 'Version JSON missing' }
   }
 
-  const versionJson = getVersionJson(versionId)
-  if (!versionJson) return { success: false, error: 'Version JSON missing' }
-
   const account = getActiveAccount()
-  if (!account) return { success: false, error: 'No account. Create an offline account first.' }
+  if (!account) return { success: false, error: 'No account. Create offline account first.' }
 
-  // Ensure content folders exist (mods load from gameDir/mods)
   getContentDir('mods')
   getContentDir('resourcepacks')
   getContentDir('shaderpacks')
@@ -60,16 +96,16 @@ export async function launchGame(
     onProgress?.('Checking Java', 5)
     java = await ensureJava(minJava, onProgress)
   } catch (e: any) {
-    return { success: false, error: e.message || `Java ${minJava} download failed` }
+    return { success: false, error: e.message || `Java ${minJava} failed` }
   }
   if (!java) return { success: false, error: `Java ${minJava}+ required` }
 
-  const nativesDir = getNativesDir(versionId)
+  const nativesDir = getNativesDir(versionJson.inheritsFrom || versionId)
   const gameDir = getRootDir()
   const assetsDir = getAssetsDir()
-  const classpath = getClasspath(versionId, versionJson)
+  const classpath = buildClasspath(versionId, versionJson)
   const mainClass = versionJson.mainClass
-  if (!mainClass) return { success: false, error: 'No mainClass in version JSON' }
+  if (!mainClass) return { success: false, error: 'No mainClass' }
 
   const tokenMap: Record<string, string> = {
     auth_player_name: account.username,
@@ -85,9 +121,9 @@ export async function launchGame(
     version_type: versionJson.type || 'release',
     natives_directory: nativesDir,
     launcher_name: 'CrystalLauncher',
-    launcher_version: '0.2.0',
+    launcher_version: '0.3.0',
     classpath,
-    library_directory: join(gameDir, 'libraries'),
+    library_directory: getLibrariesDir(),
     classpath_separator: process.platform === 'win32' ? ';' : ':',
   }
 
@@ -104,10 +140,7 @@ export async function launchGame(
     for (const arg of versionJson.arguments.jvm) {
       for (const a of applyRules(arg)) jvmArgs.push(replaceTokens(a, tokenMap))
     }
-  } else {
-    jvmArgs.push('-cp', classpath)
   }
-
   if (!jvmArgs.includes('-cp') && !jvmArgs.includes('-classpath')) {
     jvmArgs.push('-cp', classpath)
   }
@@ -130,8 +163,7 @@ export async function launchGame(
       '--assetIndex', tokenMap.assets_index_name,
       '--uuid', tokenMap.auth_uuid,
       '--accessToken', '0',
-      '--userType', 'legacy',
-      '--versionType', 'release'
+      '--userType', 'legacy'
     )
   }
 
@@ -149,6 +181,6 @@ export async function launchGame(
     gameProcess.unref()
     return { success: true, pid: gameProcess.pid }
   } catch (e: any) {
-    return { success: false, error: e.message || 'Failed to start process' }
+    return { success: false, error: e.message || 'Failed to start' }
   }
 }
