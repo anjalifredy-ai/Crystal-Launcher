@@ -1,6 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-// Expose safe APIs to the renderer (React UI)
 contextBridge.exposeInMainWorld('crystal', {
   // Window controls
   minimize: () => ipcRenderer.invoke('window:minimize'),
@@ -8,21 +7,15 @@ contextBridge.exposeInMainWorld('crystal', {
   close: () => ipcRenderer.invoke('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
 
-  // Future APIs will go here:
-  // launchGame: (options) => ipcRenderer.invoke('game:launch', options),
-  // getVersions: () => ipcRenderer.invoke('versions:list'),
-  // downloadVersion: (id) => ipcRenderer.invoke('versions:download', id),
-  // getAccounts: () => ipcRenderer.invoke('accounts:list'),
-})
+  // Version management
+  fetchVersions: () => ipcRenderer.invoke('versions:fetchManifest'),
+  isVersionInstalled: (id: string) => ipcRenderer.invoke('versions:isInstalled', id),
+  downloadVersion: (id: string, url: string) => ipcRenderer.invoke('versions:download', id, url),
+  getVersionsRoot: () => ipcRenderer.invoke('versions:getRoot'),
 
-// Type declaration for TypeScript
-declare global {
-  interface Window {
-    crystal: {
-      minimize: () => Promise<void>
-      maximize: () => Promise<void>
-      close: () => Promise<void>
-      isMaximized: () => Promise<boolean>
-    }
-  }
-}
+  onDownloadProgress: (callback: (data: { versionId: string; stage: string; percent: number }) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('versions:downloadProgress', listener)
+    return () => ipcRenderer.removeListener('versions:downloadProgress', listener)
+  },
+})
