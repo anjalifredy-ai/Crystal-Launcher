@@ -1,10 +1,11 @@
 import { spawn, ChildProcess } from 'child_process'
 import { join } from 'path'
-import { existsSync } from 'fs'
 import { getVersionJson, getClasspath, isVersionInstalled } from './versionManager'
-import { getVersionDir, getNativesDir, getAssetsDir, getRootDir } from './paths'
-import { findJava, requiredJavaMajor } from './java'
+import { getNativesDir, getAssetsDir, getRootDir } from './paths'
+import { requiredJavaMajor } from './java'
+import { ensureJava } from './javaRuntime'
 import { getActiveAccount } from './accounts'
+import { getContentDir } from './contentManager'
 
 let gameProcess: ChildProcess | null = null
 
@@ -12,9 +13,7 @@ function applyRules(arg: any): string[] {
   if (typeof arg === 'string') return [arg]
   if (!arg || !arg.value) return []
   const rules = arg.rules
-  if (!rules) {
-    return Array.isArray(arg.value) ? arg.value : [arg.value]
-  }
+  if (!rules) return Array.isArray(arg.value) ? arg.value : [arg.value]
   let allow = false
   for (const rule of rules) {
     let match = true
@@ -23,7 +22,6 @@ function applyRules(arg: any): string[] {
       if (rule.os.name && rule.os.name !== osName) match = false
     }
     if (rule.features) {
-      // We don't support demo / custom resolution features for now
       if (rule.features.is_demo_user) match = false
       if (rule.features.has_custom_resolution) match = false
     }
@@ -37,9 +35,12 @@ function replaceTokens(str: string, map: Record<string, string>): string {
   return str.replace(/\$\{([^}]+)\}/g, (_, key) => map[key] ?? '')
 }
 
-export async function launchGame(versionId: string): Promise<{ success: boolean; error?: string; pid?: number }> {
+export async function launchGame(
+  versionId: string,
+  onProgress?: (stage: string, pct: number) => void
+): Promise<{ success: boolean; error?: string; pid?: number }> {
   if (!isVersionInstalled(versionId)) {
-    return { success: false, error: 'Version not installed. Install it first.' }
+    return { success: false, error: 'Version not installed. Install it first from Versions tab.' }
   }
 
   const versionJson = getVersionJson(versionId)
@@ -48,20 +49,20 @@ export async function launchGame(versionId: string): Promise<{ success: boolean;
   const account = getActiveAccount()
   if (!account) return { success: false, error: 'No account. Create an offline account first.' }
 
+  // Ensure content folders exist (mods load from gameDir/mods)
+  getContentDir('mods')
+  getContentDir('resourcepacks')
+  getContentDir('shaderpacks')
+
   const minJava = requiredJavaMajor(versionJson)
-  const java = await findJava(minJava)
-  if (!java) {
-    return {
-      success: false,
-      error: `Java ${minJava}+ not found. Install Java and make sure it is on PATH.`,
-    }
+  let java
+  try {
+    onProgress?.('Checking Java', 5)
+    java = await ensureJava(minJava, onProgress)
+  } catch (e: any) {
+    return { success: false, error: e.message || `Java ${minJava} download failed` }
   }
-  if (java.major < minJava) {
-    return {
-      success: false,
-      error: `This version needs Java ${minJava}+. Found Java ${java.major} at ${java.path}`,
-    }
-  }
+  if (!java) return { success: false, error: `Java ${minJava}+ required` }
 
   const nativesDir = getNativesDir(versionId)
   const gameDir = getRootDir()
@@ -84,7 +85,7 @@ export async function launchGame(versionId: string): Promise<{ success: boolean;
     version_type: versionJson.type || 'release',
     natives_directory: nativesDir,
     launcher_name: 'CrystalLauncher',
-    launcher_version: '0.1.0',
+    launcher_version: '0.2.0',
     classpath,
     library_directory: join(gameDir, 'libraries'),
     classpath_separator: process.platform === 'win32' ? ';' : ':',
@@ -101,78 +102,53 @@ export async function launchGame(versionId: string): Promise<{ success: boolean;
 
   if (versionJson.arguments?.jvm) {
     for (const arg of versionJson.arguments.jvm) {
-      for (const a of applyRules(arg)) {
-        jvmArgs.push(replaceTokens(a, tokenMap))
-      }
+      for (const a of applyRules(arg)) jvmArgs.push(replaceTokens(a, tokenMap))
     }
   } else {
     jvmArgs.push('-cp', classpath)
   }
 
-  // Ensure -cp is present
   if (!jvmArgs.includes('-cp') && !jvmArgs.includes('-classpath')) {
     jvmArgs.push('-cp', classpath)
   }
 
   const gameArgs: string[] = []
-
   if (versionJson.arguments?.game) {
     for (const arg of versionJson.arguments.game) {
-      for (const a of applyRules(arg)) {
-        gameArgs.push(replaceTokens(a, tokenMap))
-      }
+      for (const a of applyRules(arg)) gameArgs.push(replaceTokens(a, tokenMap))
     }
   } else if (versionJson.minecraftArguments) {
-    const parts = versionJson.minecraftArguments.split(' ').filter(Boolean)
-    for (const p of parts) {
+    for (const p of versionJson.minecraftArguments.split(' ').filter(Boolean)) {
       gameArgs.push(replaceTokens(p, tokenMap))
     }
   } else {
-    // Minimal fallback
     gameArgs.push(
-      '--username',
-      account.username,
-      '--version',
-      versionId,
-      '--gameDir',
-      gameDir,
-      '--assetsDir',
-      assetsDir,
-      '--assetIndex',
-      tokenMap.assets_index_name,
-      '--uuid',
-      tokenMap.auth_uuid,
-      '--accessToken',
-      '0',
-      '--userType',
-      'legacy',
-      '--versionType',
-      'release'
+      '--username', account.username,
+      '--version', versionId,
+      '--gameDir', gameDir,
+      '--assetsDir', assetsDir,
+      '--assetIndex', tokenMap.assets_index_name,
+      '--uuid', tokenMap.auth_uuid,
+      '--accessToken', '0',
+      '--userType', 'legacy',
+      '--versionType', 'release'
     )
   }
 
   const args = [...jvmArgs, mainClass, ...gameArgs]
+  onProgress?.('Starting game', 100)
 
   try {
-    if (gameProcess && !gameProcess.killed) {
-      gameProcess.kill()
-    }
-
+    if (gameProcess && !gameProcess.killed) gameProcess.kill()
     gameProcess = spawn(java.path, args, {
       cwd: gameDir,
       detached: true,
       stdio: 'ignore',
       windowsHide: false,
     })
-
     gameProcess.unref()
-
     return { success: true, pid: gameProcess.pid }
   } catch (e: any) {
     return { success: false, error: e.message || 'Failed to start process' }
   }
-}
-
-export function isGameRunning(): boolean {
-  return !!(gameProcess && !gameProcess.killed)
 }
