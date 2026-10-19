@@ -1,14 +1,17 @@
 {
   "name": "crystal-launcher",
   "version": "0.1.0",
-  "description": "Crystal Launcher - Premium Minecraft Java + Bedrock Launcher",
+  "description": "Crystal Launcher - Premium Minecraft Java + Bedrock Launcher for Windows",
   "main": "dist-electron/main.js",
+  "author": "Crystal Team",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
-    "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "build:ui": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "dev:electron": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && tsc -p tsconfig.electron.json && electron .\"",
+    "build": "npm run build:ui && npm run build:electron && electron-builder",
+    "start": "electron ."
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -20,6 +23,7 @@
   "devDependencies": {
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/node": "^20.14.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "concurrently": "^8.2.2",
@@ -37,9 +41,25 @@
     "directories": {
       "output": "release"
     },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
       "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }
