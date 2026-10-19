@@ -25,6 +25,14 @@ import {
   modrinthInstall,
   ContentType,
 } from './contentManager'
+import { installLoaderProfile, LoaderKind } from './loaders'
+import {
+  listProfiles,
+  getActiveProfile,
+  upsertProfile,
+  setActiveProfile,
+  setProfileLaunchVersion,
+} from './profiles'
 
 let mainWindow: BrowserWindow | null = null
 const isDev = !app.isPackaged
@@ -55,7 +63,9 @@ function createWindow() {
     shell.openExternal(url)
     return { action: 'deny' }
   })
-  mainWindow.on('closed', () => { mainWindow = null })
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
 }
 
 ipcMain.handle('window:minimize', () => mainWindow?.minimize())
@@ -78,12 +88,11 @@ ipcMain.handle('versions:fetchManifest', async () => {
     }))
     return { success: true, latest: manifest.latest, versions }
   } catch (err: any) {
-    return { success: false, error: err.message || 'Failed to fetch versions' }
+    return { success: false, error: err.message || 'Failed' }
   }
 })
 
 ipcMain.handle('versions:isInstalled', (_e, versionId: string) => isVersionInstalled(versionId))
-
 ipcMain.handle('versions:download', async (_e, versionId: string, versionUrl: string) => {
   try {
     const result = await downloadVersion(versionId, versionUrl, (stage, percent) => {
@@ -94,7 +103,6 @@ ipcMain.handle('versions:download', async (_e, versionId: string, versionUrl: st
     return { success: false, error: err.message || 'Download failed' }
   }
 })
-
 ipcMain.handle('versions:getRoot', () => getVersionsRoot())
 
 ipcMain.handle('accounts:list', () => listAccounts())
@@ -116,7 +124,6 @@ ipcMain.handle('java:find', async () => {
   const info = await findJava(8)
   return info ? { success: true, ...info } : { success: false, error: 'Java not found' }
 })
-
 ipcMain.handle('java:ensure', async (_e, major: number) => {
   try {
     const info = await ensureJava(major || 17, (stage, pct) => {
@@ -134,7 +141,6 @@ ipcMain.handle('game:launch', async (_e, versionId: string) => {
   })
 })
 
-// Content (mods / resourcepacks / shaderpacks)
 ipcMain.handle('content:list', (_e, type: ContentType) => listContent(type))
 ipcMain.handle('content:setEnabled', (_e, type: ContentType, name: string, enabled: boolean) =>
   setContentEnabled(type, name, enabled)
@@ -152,6 +158,26 @@ ipcMain.handle(
     })
   }
 )
+
+// Loaders + profiles
+ipcMain.handle(
+  'loader:install',
+  async (_e, loader: LoaderKind, mcVersion: string, loaderVersion: string | null) => {
+    const result = await installLoaderProfile(loader, mcVersion, loaderVersion, (stage, percent) => {
+      mainWindow?.webContents.send('loader:progress', { stage, percent })
+    })
+    return result
+  }
+)
+
+ipcMain.handle('profiles:list', () => listProfiles())
+ipcMain.handle('profiles:active', () => getActiveProfile())
+ipcMain.handle('profiles:upsert', (_e, data: any) => ({ success: true, profile: upsertProfile(data) }))
+ipcMain.handle('profiles:setActive', (_e, id: string) => ({ success: true, profile: setActiveProfile(id) }))
+ipcMain.handle('profiles:setLaunchVersion', (_e, id: string, launchVersionId: string) => ({
+  success: true,
+  profile: setProfileLaunchVersion(id, launchVersionId),
+}))
 
 app.whenReady().then(() => {
   createWindow()
