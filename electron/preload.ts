@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('crystal', {
   isVersionInstalled: (id: string) => ipcRenderer.invoke('versions:isInstalled', id),
   downloadVersion: (id: string, url: string) => ipcRenderer.invoke('versions:download', id, url),
   getVersionsRoot: () => ipcRenderer.invoke('versions:getRoot'),
-  onDownloadProgress: (callback: (data: { versionId: string; stage: string; percent: number }) => void) => {
+  onDownloadProgress: (callback: (data: any) => void) => {
     const listener = (_: any, data: any) => callback(data)
     ipcRenderer.on('versions:downloadProgress', listener)
     return () => ipcRenderer.removeListener('versions:downloadProgress', listener)
@@ -23,5 +23,30 @@ contextBridge.exposeInMainWorld('crystal', {
   removeAccount: (id: string) => ipcRenderer.invoke('accounts:remove', id),
 
   findJava: () => ipcRenderer.invoke('java:find'),
+  ensureJava: (major: number) => ipcRenderer.invoke('java:ensure', major),
+  onJavaProgress: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('java:progress', listener)
+    return () => ipcRenderer.removeListener('java:progress', listener)
+  },
+
   launchGame: (versionId: string) => ipcRenderer.invoke('game:launch', versionId),
+  onGameProgress: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('game:progress', listener)
+    return () => ipcRenderer.removeListener('game:progress', listener)
+  },
+
+  listContent: (type: string) => ipcRenderer.invoke('content:list', type),
+  setContentEnabled: (type: string, name: string, enabled: boolean) =>
+    ipcRenderer.invoke('content:setEnabled', type, name, enabled),
+  deleteContent: (type: string, name: string) => ipcRenderer.invoke('content:delete', type, name),
+  openContentFolder: (type: string) => ipcRenderer.invoke('content:openFolder', type),
+  modrinthInstall: (projectId: string, gameVersion: string | null, loader: string, type: string) =>
+    ipcRenderer.invoke('content:modrinthInstall', projectId, gameVersion, loader, type),
+  onInstallProgress: (callback: (data: any) => void) => {
+    const listener = (_: any, data: any) => callback(data)
+    ipcRenderer.on('content:installProgress', listener)
+    return () => ipcRenderer.removeListener('content:installProgress', listener)
+  },
 })
