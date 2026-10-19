@@ -13,6 +13,7 @@ import {
   Square,
   X
 } from 'lucide-react'
+import VersionsPage from './pages/VersionsPage'
 
 const tabs = [
   { id: 'home', label: 'Home', icon: Home },
@@ -34,7 +35,7 @@ export default function App() {
   return (
     <div className="h-screen w-screen bg-[#0a0a0f] text-white flex flex-col overflow-hidden font-sans">
       
-      {/* ========== CUSTOM TITLE BAR (frameless window) ========== */}
+      {/* CUSTOM TITLE BAR */}
       <div 
         className="h-9 bg-[#0a0a0f] border-b border-white/5 flex items-center justify-between px-3 select-none"
         style={{ WebkitAppRegion: 'drag' } as any}
@@ -45,43 +46,29 @@ export default function App() {
         </div>
 
         <div className="flex items-center" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <button 
-            onClick={handleMinimize}
-            className="w-11 h-9 flex items-center justify-center hover:bg-white/10 transition"
-          >
+          <button onClick={handleMinimize} className="w-11 h-9 flex items-center justify-center hover:bg-white/10 transition">
             <Minus size={14} className="text-white/60" />
           </button>
-          <button 
-            onClick={handleMaximize}
-            className="w-11 h-9 flex items-center justify-center hover:bg-white/10 transition"
-          >
+          <button onClick={handleMaximize} className="w-11 h-9 flex items-center justify-center hover:bg-white/10 transition">
             <Square size={12} className="text-white/60" />
           </button>
-          <button 
-            onClick={handleClose}
-            className="w-11 h-9 flex items-center justify-center hover:bg-red-500/80 transition"
-          >
+          <button onClick={handleClose} className="w-11 h-9 flex items-center justify-center hover:bg-red-500/80 transition">
             <X size={14} className="text-white/60" />
           </button>
         </div>
       </div>
 
-      {/* ========== MAIN LAYOUT ========== */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
         <aside className="w-64 bg-[#0f0f17] border-r border-white/5 flex flex-col">
-          {/* Logo */}
           <div className="p-5 border-b border-white/5">
             <h1 className="text-xl font-bold tracking-tight">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
-                CRYSTAL
-              </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">CRYSTAL</span>
               <span className="text-white/80 text-sm ml-1">Launcher</span>
             </h1>
             <p className="text-xs text-white/40 mt-1">Premium Minecraft Experience</p>
           </div>
 
-          {/* Edition Switch */}
           <div className="p-4">
             <div className="flex bg-black/40 rounded-xl p-1">
               <button
@@ -107,7 +94,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 px-3 space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon
@@ -129,7 +115,6 @@ export default function App() {
             })}
           </nav>
 
-          {/* User / Account */}
           <div className="p-4 border-t border-white/5">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold">
@@ -145,7 +130,6 @@ export default function App() {
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col relative">
-          {/* Top bar */}
           <header className="h-14 border-b border-white/5 flex items-center justify-between px-8">
             <div>
               <h2 className="text-lg font-semibold capitalize">{activeTab.replace('-', ' ')}</h2>
@@ -165,20 +149,19 @@ export default function App() {
             </div>
           </header>
 
-          {/* Content Area */}
-          <div className="flex-1 p-8 overflow-auto">
+          <div className="flex-1 p-6 overflow-hidden">
             {activeTab === 'home' && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
+                className="space-y-6 h-full overflow-auto"
               >
                 <div className="grid grid-cols-3 gap-6">
                   <div className="col-span-2 bg-gradient-to-br from-[#12121a] to-[#0f0f17] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
                     <h3 className="text-2xl font-bold mb-2">Welcome to Crystal</h3>
                     <p className="text-white/50 mb-6 max-w-md">
-                      Premium Minecraft experience with beautiful UI, powerful version management, and upcoming client features.
+                      Premium Minecraft launcher with version management, mods support, and upcoming client features.
                     </p>
                     <div className="flex gap-3">
                       <button 
@@ -197,34 +180,42 @@ export default function App() {
                   </div>
 
                   <div className="bg-[#12121a] border border-white/5 rounded-2xl p-6">
-                    <h4 className="text-sm font-medium text-white/60 mb-4">Quick Stats</h4>
+                    <h4 className="text-sm font-medium text-white/60 mb-4">Status</h4>
                     <div className="space-y-4">
                       <div>
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-xs text-white/40">Installed Versions</p>
+                        <p className="text-sm text-cyan-300 font-medium">Versions Live</p>
+                        <p className="text-xs text-white/40">Mojang manifest connected</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-xs text-white/40">Mods</p>
+                        <p className="text-sm text-white/70">Offline Account</p>
+                        <p className="text-xs text-white/40">Ready to play</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">Offline</p>
-                        <p className="text-xs text-white/40">Current Account</p>
+                        <p className="text-sm text-white/50">Launch system</p>
+                        <p className="text-xs text-white/30">Next up</p>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                <div className="bg-[#12121a] border border-white/5 rounded-2xl p-6">
-                  <h4 className="font-medium mb-3">Development Status</h4>
-                  <p className="text-sm text-white/50">
-                    Electron desktop shell is ready. Next: Version management + Launch system.
-                  </p>
-                </div>
               </motion.div>
             )}
 
-            {activeTab !== 'home' && (
+            {activeTab === 'versions' && edition === 'java' && (
+              <VersionsPage />
+            )}
+
+            {activeTab === 'versions' && edition === 'bedrock' && (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center max-w-md">
+                  <p className="text-white/40 text-lg mb-2">Bedrock Version Management</p>
+                  <p className="text-white/25 text-sm">
+                    Coming in a later phase. Windows Bedrock is controlled by Microsoft Store / Xbox.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab !== 'home' && activeTab !== 'versions' && (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
                   <p className="text-white/30 text-lg mb-2">{tabs.find(t => t.id === activeTab)?.label}</p>
