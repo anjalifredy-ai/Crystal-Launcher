@@ -8,7 +8,10 @@ import {
   User, 
   Server,
   Download,
-  Play
+  Play,
+  Minus,
+  Square,
+  X
 } from 'lucide-react'
 
 const tabs = [
@@ -24,168 +27,214 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home')
   const [edition, setEdition] = useState<'java' | 'bedrock'>('java')
 
+  const handleMinimize = () => window.crystal?.minimize()
+  const handleMaximize = () => window.crystal?.maximize()
+  const handleClose = () => window.crystal?.close()
+
   return (
-    <div className="h-screen w-screen bg-[#0a0a0f] text-white flex overflow-hidden font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#0f0f17] border-r border-white/5 flex flex-col">
-        {/* Logo */}
-        <div className="p-6 border-b border-white/5">
-          <h1 className="text-2xl font-bold tracking-tight">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
-              CRYSTAL
-            </span>
-            <span className="text-white/80 text-sm ml-1">Launcher</span>
-          </h1>
-          <p className="text-xs text-white/40 mt-1">Premium Minecraft Experience</p>
+    <div className="h-screen w-screen bg-[#0a0a0f] text-white flex flex-col overflow-hidden font-sans">
+      
+      {/* ========== CUSTOM TITLE BAR (frameless window) ========== */}
+      <div 
+        className="h-9 bg-[#0a0a0f] border-b border-white/5 flex items-center justify-between px-3 select-none"
+        style={{ WebkitAppRegion: 'drag' } as any}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500" />
+          <span className="text-xs text-white/60 font-medium tracking-wide">CRYSTAL LAUNCHER</span>
         </div>
 
-        {/* Edition Switch */}
-        <div className="p-4">
-          <div className="flex bg-black/40 rounded-xl p-1">
-            <button
-              onClick={() => setEdition('java')}
-              className={`flex-1 py-2 text-sm rounded-lg transition-all ${
-                edition === 'java'
-                  ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 border border-cyan-500/30'
-                  : 'text-white/50 hover:text-white/80'
-              }`}
-            >
-              Java
-            </button>
-            <button
-              onClick={() => setEdition('bedrock')}
-              className={`flex-1 py-2 text-sm rounded-lg transition-all ${
-                edition === 'bedrock'
-                  ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-500/30'
-                  : 'text-white/50 hover:text-white/80'
-              }`}
-            >
-              Bedrock
-            </button>
+        <div className="flex items-center" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          <button 
+            onClick={handleMinimize}
+            className="w-11 h-9 flex items-center justify-center hover:bg-white/10 transition"
+          >
+            <Minus size={14} className="text-white/60" />
+          </button>
+          <button 
+            onClick={handleMaximize}
+            className="w-11 h-9 flex items-center justify-center hover:bg-white/10 transition"
+          >
+            <Square size={12} className="text-white/60" />
+          </button>
+          <button 
+            onClick={handleClose}
+            className="w-11 h-9 flex items-center justify-center hover:bg-red-500/80 transition"
+          >
+            <X size={14} className="text-white/60" />
+          </button>
+        </div>
+      </div>
+
+      {/* ========== MAIN LAYOUT ========== */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-64 bg-[#0f0f17] border-r border-white/5 flex flex-col">
+          {/* Logo */}
+          <div className="p-5 border-b border-white/5">
+            <h1 className="text-xl font-bold tracking-tight">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+                CRYSTAL
+              </span>
+              <span className="text-white/80 text-sm ml-1">Launcher</span>
+            </h1>
+            <p className="text-xs text-white/40 mt-1">Premium Minecraft Experience</p>
           </div>
-        </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            const isActive = activeTab === tab.id
-            return (
+          {/* Edition Switch */}
+          <div className="p-4">
+            <div className="flex bg-black/40 rounded-xl p-1">
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${
-                  isActive
-                    ? 'bg-white/10 text-white shadow-lg shadow-cyan-500/5'
-                    : 'text-white/50 hover:bg-white/5 hover:text-white/80'
+                onClick={() => setEdition('java')}
+                className={`flex-1 py-2 text-sm rounded-lg transition-all ${
+                  edition === 'java'
+                    ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 border border-cyan-500/30'
+                    : 'text-white/50 hover:text-white/80'
                 }`}
               >
-                <Icon size={18} className={isActive ? 'text-cyan-400' : ''} />
-                {tab.label}
+                Java
               </button>
-            )
-          })}
-        </nav>
-
-        {/* User / Account */}
-        <div className="p-4 border-t border-white/5">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold">
-              C
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">Crystal Player</p>
-              <p className="text-xs text-white/40">Offline Account</p>
+              <button
+                onClick={() => setEdition('bedrock')}
+                className={`flex-1 py-2 text-sm rounded-lg transition-all ${
+                  edition === 'bedrock'
+                    ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-500/30'
+                    : 'text-white/50 hover:text-white/80'
+                }`}
+              >
+                Bedrock
+              </button>
             </div>
           </div>
-        </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col relative">
-        {/* Top bar */}
-        <header className="h-16 border-b border-white/5 flex items-center justify-between px-8">
-          <div>
-            <h2 className="text-lg font-semibold capitalize">{activeTab.replace('-', ' ')}</h2>
-            <p className="text-xs text-white/40">
-              {edition === 'java' ? 'Minecraft Java Edition' : 'Minecraft Bedrock Edition'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm flex items-center gap-2 transition">
-              <Download size={16} />
-              Install Java
-            </button>
-            <button className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition">
-              <Play size={16} fill="currentColor" />
-              Play
-            </button>
-          </div>
-        </header>
+          {/* Navigation */}
+          <nav className="flex-1 px-3 space-y-1">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${
+                    isActive
+                      ? 'bg-white/10 text-white shadow-lg shadow-cyan-500/5'
+                      : 'text-white/50 hover:bg-white/5 hover:text-white/80'
+                  }`}
+                >
+                  <Icon size={18} className={isActive ? 'text-cyan-400' : ''} />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </nav>
 
-        {/* Content Area */}
-        <div className="flex-1 p-8 overflow-auto">
-          {activeTab === 'home' && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div className="grid grid-cols-3 gap-6">
-                <div className="col-span-2 bg-gradient-to-br from-[#12121a] to-[#0f0f17] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
-                  <h3 className="text-2xl font-bold mb-2">Welcome to Crystal</h3>
-                  <p className="text-white/50 mb-6 max-w-md">
-                    Premium Minecraft experience with beautiful UI, powerful version management, and upcoming client features.
-                  </p>
-                  <div className="flex gap-3">
-                    <button className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-sm transition">
-                      Browse Versions
-                    </button>
-                    <button className="px-5 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-sm hover:bg-cyan-500/30 transition">
-                      Manage Mods
-                    </button>
+          {/* User / Account */}
+          <div className="p-4 border-t border-white/5">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold">
+                C
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">Crystal Player</p>
+                <p className="text-xs text-white/40">Offline Account</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col relative">
+          {/* Top bar */}
+          <header className="h-14 border-b border-white/5 flex items-center justify-between px-8">
+            <div>
+              <h2 className="text-lg font-semibold capitalize">{activeTab.replace('-', ' ')}</h2>
+              <p className="text-xs text-white/40">
+                {edition === 'java' ? 'Minecraft Java Edition' : 'Minecraft Bedrock Edition'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm flex items-center gap-2 transition">
+                <Download size={16} />
+                Install Java
+              </button>
+              <button className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition">
+                <Play size={16} fill="currentColor" />
+                Play
+              </button>
+            </div>
+          </header>
+
+          {/* Content Area */}
+          <div className="flex-1 p-8 overflow-auto">
+            {activeTab === 'home' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="col-span-2 bg-gradient-to-br from-[#12121a] to-[#0f0f17] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
+                    <h3 className="text-2xl font-bold mb-2">Welcome to Crystal</h3>
+                    <p className="text-white/50 mb-6 max-w-md">
+                      Premium Minecraft experience with beautiful UI, powerful version management, and upcoming client features.
+                    </p>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setActiveTab('versions')}
+                        className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-sm transition"
+                      >
+                        Browse Versions
+                      </button>
+                      <button 
+                        onClick={() => setActiveTab('mods')}
+                        className="px-5 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-sm hover:bg-cyan-500/30 transition"
+                      >
+                        Manage Mods
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#12121a] border border-white/5 rounded-2xl p-6">
+                    <h4 className="text-sm font-medium text-white/60 mb-4">Quick Stats</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-2xl font-bold">0</p>
+                        <p className="text-xs text-white/40">Installed Versions</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">0</p>
+                        <p className="text-xs text-white/40">Mods</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">Offline</p>
+                        <p className="text-xs text-white/40">Current Account</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="bg-[#12121a] border border-white/5 rounded-2xl p-6">
-                  <h4 className="text-sm font-medium text-white/60 mb-4">Quick Stats</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-2xl font-bold">0</p>
-                      <p className="text-xs text-white/40">Installed Versions</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">0</p>
-                      <p className="text-xs text-white/40">Mods</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">Offline</p>
-                      <p className="text-xs text-white/40">Current Account</p>
-                    </div>
-                  </div>
+                  <h4 className="font-medium mb-3">Development Status</h4>
+                  <p className="text-sm text-white/50">
+                    Electron desktop shell is ready. Next: Version management + Launch system.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab !== 'home' && (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-white/30 text-lg mb-2">{tabs.find(t => t.id === activeTab)?.label}</p>
+                  <p className="text-white/20 text-sm">Coming soon...</p>
                 </div>
               </div>
-
-              <div className="bg-[#12121a] border border-white/5 rounded-2xl p-6">
-                <h4 className="font-medium mb-3">Development Status</h4>
-                <p className="text-sm text-white/50">
-                  This is the initial UI shell of Crystal Launcher. Core features (version downloading, launching, accounts, mods management) are being built step by step.
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab !== 'home' && (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-white/30 text-lg mb-2">{tabs.find(t => t.id === activeTab)?.label}</p>
-                <p className="text-white/20 text-sm">Coming soon in Phase 1...</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
