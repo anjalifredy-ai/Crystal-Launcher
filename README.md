@@ -32,12 +32,15 @@ Crystal Launcher aims to be a beautiful, fast, and feature-rich launcher that su
 ## Current Status
 
 - [x] Repository created
-- [ ] Electron + React + Tailwind base
-- [ ] Basic UI shell (Home, Versions, Mods, Settings)
-- [ ] Java version management
+- [x] Electron + React + Tailwind base
+- [x] Premium frameless UI shell (Home, Versions, Mods, Settings...)
+- [x] Java version list (Mojang piston-meta API)
+- [x] Version search + filters (Release / Snapshot / Legacy)
+- [x] Version download (client.jar + version JSON) with progress
+- [ ] Full library + assets download
+- [ ] Launch system (classpath + natives + offline auth)
 - [ ] Account system (Offline first)
 - [ ] Microsoft Auth flow
-- [ ] Launch system
 - [ ] Mods / Resource packs folder management
 - [ ] Bedrock support
 - [ ] Skin / Cape manager
@@ -45,35 +48,43 @@ Crystal Launcher aims to be a beautiful, fast, and feature-rich launcher that su
 
 ---
 
-## Tech Stack (Planned)
+## Run (Development)
 
-- **Frontend**: React + Vite + Tailwind CSS + Framer Motion (premium animations)
-- **Desktop**: Electron (or Tauri later for performance)
+```bash
+git clone https://github.com/anjalifredy-ai/Crystal-Launcher.git
+cd Crystal-Launcher
+npm install
+npm run dev:electron
+```
+
+---
+
+## Tech Stack
+
+- **Frontend**: React + Vite + Tailwind CSS + Framer Motion
+- **Desktop**: Electron
 - **Language**: TypeScript
-- **Java Management**: Custom or adopt from existing open-source solutions
-- **Auth**: Microsoft OAuth (device code flow)
+- **Versions API**: https://piston-meta.mojang.com/mc/game/version_manifest_v2.json
 
 ---
 
 ## Roadmap
 
-### Phase 1 – Core Launcher (Current Focus)
-1. Beautiful dark premium UI
-2. Java version downloading & launching
-3. Offline accounts
-4. Profiles
+### Phase 1 – Core Launcher (In Progress)
+1. Beautiful dark premium UI ✅
+2. Java version list + download ✅ (client jar)
+3. Full install (libraries + assets) + Launch
+4. Offline accounts
 5. Basic mods/resource packs folders
 
 ### Phase 2 – Accounts & Polish
 - Microsoft account login
 - Skin changer
-- Better version filtering
 - Auto Java download (including legacy for old MC + Win7)
 
 ### Phase 3 – Bedrock + Advanced
 - Bedrock Edition support
-- Behavior packs / Resource packs for Bedrock
-- Aternos / Exaroton quick launch buttons + webview
+- Aternos / Exaroton buttons + webview
 
 ### Phase 4 – Client Integration (Optional & Risky)
 - Fabric/Quilt based Crystal Client with HUD features
@@ -86,12 +97,6 @@ Crystal Launcher aims to be a beautiful, fast, and feature-rich launcher that su
 - Users must own a legitimate copy of Minecraft.
 - Custom clients with certain features can violate Mojang's Terms of Service and may result in account bans. Use at your own risk.
 - Not affiliated with Mojang or Microsoft.
-
----
-
-## Contributing
-
-This is an ambitious project. Contributions, ideas, and PRs are welcome once the base is stable.
 
 ---
 
