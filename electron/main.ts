@@ -1,9 +1,12 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
-import { existsSync } from 'fs'
-
-// Disable hardware acceleration for better Win7 compatibility (optional)
-// app.disableHardwareAcceleration()
+import {
+  fetchVersionManifest,
+  downloadVersion,
+  isVersionInstalled,
+  getVersionsRoot,
+  VersionEntry,
+} from './versionManager'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -15,7 +18,7 @@ function createWindow() {
     height: 800,
     minWidth: 1100,
     minHeight: 700,
-    frame: false,               // Custom titlebar for premium look
+    frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0a0a0f',
     show: false,
@@ -28,10 +31,8 @@ function createWindow() {
     icon: join(__dirname, '../public/icon.ico'),
   })
 
-  // Load UI
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
-    // mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
@@ -40,7 +41,6 @@ function createWindow() {
     mainWindow?.show()
   })
 
-  // Open external links in browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
@@ -51,49 +51,72 @@ function createWindow() {
   })
 }
 
-// ========== Window Controls (for frameless window) ==========
-ipcMain.handle('window:minimize', () => {
-  mainWindow?.minimize()
-})
-
+// ========== Window Controls ==========
+ipcMain.handle('window:minimize', () => mainWindow?.minimize())
 ipcMain.handle('window:maximize', () => {
-  if (mainWindow?.isMaximized()) {
-    mainWindow.unmaximize()
-  } else {
-    mainWindow?.maximize()
+  if (mainWindow?.isMaximized()) mainWindow.unmaximize()
+  else mainWindow?.maximize()
+})
+ipcMain.handle('window:close', () => mainWindow?.close())
+ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
+
+// ========== Version Management ==========
+ipcMain.handle('versions:fetchManifest', async () => {
+  try {
+    const manifest = await fetchVersionManifest()
+    const versions = manifest.versions.map((v: VersionEntry) => ({
+      id: v.id,
+      type: v.type,
+      url: v.url,
+      releaseTime: v.releaseTime,
+      installed: isVersionInstalled(v.id),
+    }))
+    return {
+      success: true,
+      latest: manifest.latest,
+      versions,
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch versions' }
   }
 })
 
-ipcMain.handle('window:close', () => {
-  mainWindow?.close()
+ipcMain.handle('versions:isInstalled', (_e, versionId: string) => {
+  return isVersionInstalled(versionId)
 })
 
-ipcMain.handle('window:isMaximized', () => {
-  return mainWindow?.isMaximized() ?? false
+ipcMain.handle('versions:download', async (event, versionId: string, versionUrl: string) => {
+  try {
+    const result = await downloadVersion(versionId, versionUrl, (stage, percent) => {
+      mainWindow?.webContents.send('versions:downloadProgress', {
+        versionId,
+        stage,
+        percent,
+      })
+    })
+    return { success: true, path: result.path }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Download failed' }
+  }
 })
+
+ipcMain.handle('versions:getRoot', () => getVersionsRoot())
 
 // ========== App Lifecycle ==========
 app.whenReady().then(() => {
   createWindow()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  if (process.platform !== 'darwin') app.quit()
 })
 
-// Security: prevent new window creation
 app.on('web-contents-created', (_, contents) => {
   contents.on('will-navigate', (event, url) => {
-    if (url !== contents.getURL()) {
-      event.preventDefault()
-    }
+    if (url !== contents.getURL()) event.preventDefault()
   })
 })
