@@ -33,6 +33,12 @@ import {
   setActiveProfile,
   setProfileLaunchVersion,
 } from './profiles'
+import {
+  getBedrockStatus,
+  launchBedrock,
+  openBedrockStorePage,
+  openXboxApp,
+} from './bedrock'
 
 let mainWindow: BrowserWindow | null = null
 const isDev = !app.isPackaged
@@ -159,7 +165,6 @@ ipcMain.handle(
   }
 )
 
-// Loaders + profiles
 ipcMain.handle(
   'loader:install',
   async (_e, loader: LoaderKind, mcVersion: string, loaderVersion: string | null) => {
@@ -178,6 +183,12 @@ ipcMain.handle('profiles:setLaunchVersion', (_e, id: string, launchVersionId: st
   success: true,
   profile: setProfileLaunchVersion(id, launchVersionId),
 }))
+
+// Bedrock + Microsoft overlay
+ipcMain.handle('bedrock:status', () => getBedrockStatus())
+ipcMain.handle('bedrock:launch', (_e, preview?: boolean) => launchBedrock({ preview: !!preview }))
+ipcMain.handle('bedrock:openStore', () => openBedrockStorePage())
+ipcMain.handle('bedrock:openXbox', () => openXboxApp())
 
 app.whenReady().then(() => {
   createWindow()
