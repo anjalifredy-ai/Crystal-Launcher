@@ -64,4 +64,9 @@ contextBridge.exposeInMainWorld('crystal', {
   setActiveProfile: (id: string) => ipcRenderer.invoke('profiles:setActive', id),
   setProfileLaunchVersion: (id: string, launchVersionId: string) =>
     ipcRenderer.invoke('profiles:setLaunchVersion', id, launchVersionId),
+
+  bedrockStatus: () => ipcRenderer.invoke('bedrock:status'),
+  launchBedrock: (preview?: boolean) => ipcRenderer.invoke('bedrock:launch', preview),
+  openBedrockStore: () => ipcRenderer.invoke('bedrock:openStore'),
+  openXbox: () => ipcRenderer.invoke('bedrock:openXbox'),
 })
