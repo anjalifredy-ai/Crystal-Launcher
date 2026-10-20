@@ -35,6 +35,15 @@ interface Profile {
   active: boolean
 }
 
+interface BedrockStatus {
+  supported: boolean
+  windowsEdition: string
+  installed: boolean
+  previewInstalled: boolean
+  packageFamilyName: string
+  message: string
+}
+
 interface CrystalAPI {
   minimize: () => Promise<void>
   maximize: () => Promise<void>
@@ -92,6 +101,11 @@ interface CrystalAPI {
   }>
   setActiveProfile: (id: string) => Promise<{ success: boolean; profile?: Profile | null }>
   setProfileLaunchVersion: (id: string, launchVersionId: string) => Promise<{ success: boolean; profile?: Profile | null }>
+
+  bedrockStatus: () => Promise<BedrockStatus>
+  launchBedrock: (preview?: boolean) => Promise<{ success: boolean; method?: string; error?: string }>
+  openBedrockStore: () => Promise<{ success: boolean }>
+  openXbox: () => Promise<{ success: boolean }>
 }
 
 interface Window {
