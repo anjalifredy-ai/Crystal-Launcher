@@ -8,19 +8,22 @@ import { release, platform } from 'os'
 const execFileAsync = promisify(execFile)
 const execAsync = promisify(exec)
 
-/** Official Minecraft Bedrock (Windows) package */
+/** Official Minecraft Bedrock Release (Windows) */
 const BEDROCK_PFN = 'Microsoft.MinecraftUWP_8wekyb3d8bbwe'
 const BEDROCK_AUMID = `${BEDROCK_PFN}!App`
 
-/** Minecraft Preview (optional) */
+/** Minecraft Preview */
 const PREVIEW_PFN = 'Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe'
 const PREVIEW_AUMID = `${PREVIEW_PFN}!App`
+
+const STORE_RELEASE = 'ms-windows-store://pdp/?ProductId=9NBLGGH2JHXJ'
+const STORE_PREVIEW = 'ms-windows-store://pdp/?ProductId=9N5T5F1HBT5W'
 
 export type WinEdition = 'win7' | 'win8' | 'win10' | 'win11' | 'other' | 'non-windows'
 
 export function detectWindowsEdition(): WinEdition {
   if (platform() !== 'win32') return 'non-windows'
-  const r = release() // e.g. 10.0.22631
+  const r = release()
   const parts = r.split('.').map(Number)
   const major = parts[0] || 0
   const build = parts[2] || 0
@@ -28,7 +31,6 @@ export function detectWindowsEdition(): WinEdition {
     if (major === 6 && (parts[1] || 0) <= 1) return 'win7'
     return 'win8'
   }
-  // Windows 11 starts at build 22000
   if (build >= 22000) return 'win11'
   return 'win10'
 }
@@ -47,7 +49,6 @@ async function isPackageInstalled(pfn: string): Promise<boolean> {
     )
     return stdout.trim().length > 0
   } catch {
-    // Fallback: check WindowsApps path (may need admin; often fails)
     try {
       const apps = join(process.env.ProgramFiles || 'C:\\Program Files', 'WindowsApps')
       if (!existsSync(apps)) return false
@@ -79,13 +80,18 @@ export async function getBedrockStatus(): Promise<{
       packageFamilyName: BEDROCK_PFN,
       message:
         windowsEdition === 'win7' || windowsEdition === 'win8'
-          ? 'Bedrock Microsoft Store overlay needs Windows 10 or 11. Win7 pe sirf Java Edition.'
-          : 'Bedrock launch Windows pe Microsoft Store app se hota hai.',
+          ? 'Bedrock needs Windows 10 or 11 (same as Dawn). Win7 pe sirf Java.'
+          : 'Bedrock Microsoft Store apps se chalta hai.',
     }
   }
 
   const installed = await isPackageInstalled(BEDROCK_PFN)
   const previewInstalled = await isPackageInstalled(PREVIEW_PFN)
+
+  let message = 'Microsoft Store se Release / Preview install karo.'
+  if (installed && previewInstalled) message = 'Release + Preview ready · Xbox / Microsoft account se play.'
+  else if (installed) message = 'Release ready · Preview optional (Store se).'
+  else if (previewInstalled) message = 'Preview ready · Release Store se install karo.'
 
   return {
     supported: true,
@@ -93,43 +99,52 @@ export async function getBedrockStatus(): Promise<{
     installed,
     previewInstalled,
     packageFamilyName: BEDROCK_PFN,
-    message: installed
-      ? 'Minecraft Bedrock installed — Microsoft / Xbox account se launch hoga.'
-      : 'Bedrock install nahi hai. Microsoft Store se install karo (Play pe Store khulega).',
+    message,
   }
 }
 
-/**
- * Launch Bedrock via Microsoft Store / UWP shell (Xbox identity overlay).
- * Tries: minecraft: protocol → shell:AppsFolder AUMID → Store product page
- */
+/** Dawn-style: launch Release or Preview via Microsoft overlay */
 export async function launchBedrock(opts?: {
   preview?: boolean
 }): Promise<{ success: boolean; method?: string; error?: string }> {
   if (!bedrockSupported()) {
     return {
       success: false,
-      error: 'Bedrock needs Windows 10/11 for Microsoft Store overlay.',
+      error: 'Bedrock needs Windows 10/11 (Dawn jaisa).',
     }
   }
 
   const preview = !!opts?.preview
   const aumid = preview ? PREVIEW_AUMID : BEDROCK_AUMID
   const pfn = preview ? PREVIEW_PFN : BEDROCK_PFN
+  const installed = await isPackageInstalled(pfn)
 
-  // 1) Protocol (uses registered handler — Microsoft account session)
+  // If not installed → Store first (clearer UX)
+  if (!installed) {
+    try {
+      await shell.openExternal(preview ? STORE_PREVIEW : STORE_RELEASE)
+      return {
+        success: true,
+        method: 'ms-store',
+        error: `Opened Store for ${preview ? 'Preview' : 'Release'} — install then PLAY again.`,
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message || 'Could not open Microsoft Store' }
+    }
+  }
+
+  // 1) Protocol
   try {
     await shell.openExternal(preview ? 'minecraft-preview://' : 'minecraft://')
     return { success: true, method: 'protocol' }
   } catch {}
 
-  // 2) shell:AppsFolder launch (UWP)
+  // 2) shell:AppsFolder
   try {
-    await execFileAsync(
-      'explorer.exe',
-      [`shell:AppsFolder\\${aumid}`],
-      { windowsHide: true, timeout: 10000 }
-    )
+    await execFileAsync('explorer.exe', [`shell:AppsFolder\\${aumid}`], {
+      windowsHide: true,
+      timeout: 10000,
+    })
     return { success: true, method: 'shell:AppsFolder' }
   } catch {}
 
@@ -139,42 +154,28 @@ export async function launchBedrock(opts?: {
       timeout: 10000,
     })
     return { success: true, method: 'start explorer' }
-  } catch {}
-
-  // 3) Open Microsoft Store product page so user can install / update
-  try {
-    // Minecraft for Windows Store product
-    await shell.openExternal(
-      preview
-        ? 'ms-windows-store://pdp/?ProductId=9N5T5F1HBT5W'
-        : 'ms-windows-store://pdp/?ProductId=9NBLGGH2JHXJ'
-    )
-    return {
-      success: true,
-      method: 'ms-store',
-      error: 'Opened Microsoft Store — install Minecraft then press Play again.',
-    }
   } catch (e: any) {
     return {
       success: false,
-      error: e.message || `Could not launch ${pfn}. Install from Microsoft Store.`,
+      error: e.message || `Could not launch ${pfn}`,
     }
   }
 }
 
-export async function openBedrockStorePage(): Promise<{ success: boolean }> {
+export async function openBedrockStorePage(preview?: boolean): Promise<{ success: boolean }> {
   try {
-    await shell.openExternal('ms-windows-store://pdp/?ProductId=9NBLGGH2JHXJ')
+    await shell.openExternal(preview ? STORE_PREVIEW : STORE_RELEASE)
     return { success: true }
   } catch {
     await shell.openExternal(
-      'https://www.microsoft.com/store/productId/9NBLGGH2JHXJ'
+      preview
+        ? 'https://www.microsoft.com/store/productId/9N5T5F1HBT5W'
+        : 'https://www.microsoft.com/store/productId/9NBLGGH2JHXJ'
     )
     return { success: true }
   }
 }
 
-/** Open Xbox app (Microsoft account / Game Pass hub) */
 export async function openXboxApp(): Promise<{ success: boolean }> {
   try {
     await shell.openExternal('ms-xbox://')
