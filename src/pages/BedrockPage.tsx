@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { Play, Loader2, Store, Gamepad2, AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react'
+import {
+  Play,
+  Loader2,
+  Store,
+  Gamepad2,
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  ChevronDown,
+} from 'lucide-react'
 
 interface BedrockStatus {
   supported: boolean
@@ -10,12 +19,15 @@ interface BedrockStatus {
   message: string
 }
 
+type BedrockProfile = 'release' | 'preview'
+
 export default function BedrockPage() {
   const [status, setStatus] = useState<BedrockStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [launching, setLaunching] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const [preview, setPreview] = useState(false)
+  const [profile, setProfile] = useState<BedrockProfile>('release')
+  const [showPicker, setShowPicker] = useState(false)
 
   const refresh = async () => {
     setLoading(true)
@@ -45,16 +57,20 @@ export default function BedrockPage() {
   }, [])
 
   const handlePlay = async () => {
+    if (!status?.supported) return
     setLaunching(true)
     setMsg(null)
     try {
-      const res = await window.crystal.launchBedrock(preview)
+      const isPreview = profile === 'preview'
+      const res = await window.crystal.launchBedrock(isPreview)
       if (res.success) {
-        setMsg(
-          res.method === 'ms-store'
-            ? res.error || 'Microsoft Store opened — install karke phir Play dabao'
-            : `Launched via ${res.method} · Microsoft / Xbox account overlay`
-        )
+        if (res.method === 'ms-store') {
+          setMsg(res.error || 'Microsoft Store opened — install karke phir PLAY')
+        } else {
+          setMsg(
+            `Started ${isPreview ? 'Preview' : 'Release'} · ${res.method} · Microsoft / Xbox login`
+          )
+        }
       } else {
         setMsg(res.error || 'Launch failed')
       }
@@ -62,7 +78,7 @@ export default function BedrockPage() {
       setMsg(e.message || 'Launch failed')
     } finally {
       setLaunching(false)
-      setTimeout(refresh, 1500)
+      setTimeout(refresh, 1200)
     }
   }
 
@@ -75,10 +91,20 @@ export default function BedrockPage() {
   }
 
   const s = status!
+  const selectedInstalled = profile === 'release' ? s.installed : s.previewInstalled
+  const profileLabel = profile === 'release' ? 'RELEASE' : 'PREVIEW'
+  const profileSub =
+    profile === 'release'
+      ? s.installed
+        ? 'Bedrock · Installed'
+        : 'Bedrock · Not installed'
+      : s.previewInstalled
+        ? 'Bedrock Preview · Installed'
+        : 'Bedrock Preview · Not installed'
 
   return (
     <div className="h-full flex flex-col px-4 pt-3 pb-4 gap-3 max-w-[1100px] mx-auto w-full overflow-auto">
-      {/* Banner */}
+      {/* Hero — Dawn-style */}
       <div className="relative rounded-[18px] overflow-hidden border border-white/[0.06] h-[200px] shrink-0">
         <div
           className="absolute inset-0"
@@ -91,18 +117,18 @@ export default function BedrockPage() {
           className="absolute inset-0 opacity-50"
           style={{
             backgroundImage:
-              'radial-gradient(circle at 70% 40%, rgba(52,211,153,0.25), transparent 45%), radial-gradient(circle at 20% 80%, rgba(16,185,129,0.15), transparent 40%)',
+              'radial-gradient(circle at 75% 40%, rgba(52,211,153,0.28), transparent 45%), radial-gradient(circle at 15% 75%, rgba(16,185,129,0.18), transparent 40%)',
           }}
         />
         <div className="relative z-10 h-full flex flex-col justify-between p-5">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] font-semibold tracking-[0.2em] text-emerald-300/70 uppercase">
-                Microsoft Store · Xbox
+                Like Dawn · Microsoft Store
               </p>
-              <h1 className="text-[36px] font-black tracking-tight leading-none mt-1">BEDROCK</h1>
+              <h1 className="text-[40px] font-black tracking-tight leading-none mt-1">BEDROCK</h1>
               <p className="text-[11px] text-white/45 mt-2 tracking-wide">
-                Play with Microsoft account overlay
+                Release + Preview · Xbox account overlay
               </p>
             </div>
             <span
@@ -116,64 +142,136 @@ export default function BedrockPage() {
             </span>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <span className="px-2.5 h-6 rounded-full bg-black/35 border border-white/10 text-[9px] font-semibold text-white/60 flex items-center">
-              REALMS
-            </span>
-            <span className="px-2.5 h-6 rounded-full bg-black/35 border border-white/10 text-[9px] font-semibold text-white/60 flex items-center">
-              CROSS-PLAY
-            </span>
-            <span className="px-2.5 h-6 rounded-full bg-black/35 border border-white/10 text-[9px] font-semibold text-white/60 flex items-center">
-              MARKETPLACE
-            </span>
+            {['REALMS', 'CROSS-PLAY', 'MARKETPLACE'].map((t) => (
+              <span
+                key={t}
+                className="px-2.5 h-6 rounded-full bg-black/35 border border-white/10 text-[9px] font-semibold text-white/60 flex items-center gap-1"
+              >
+                <span className="w-1 h-1 rounded-full bg-white/40" />
+                {t}
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Status + Play */}
-      <div className="flex items-stretch gap-2.5 flex-wrap">
-        <div className="flex-1 min-w-[240px] rounded-[16px] bg-[#121722] border border-white/[0.06] px-4 py-3 flex items-center gap-3">
-          {s.installed ? (
-            <CheckCircle2 className="text-emerald-400 shrink-0" size={22} />
-          ) : (
-            <AlertTriangle className="text-amber-400 shrink-0" size={22} />
-          )}
-          <div className="min-w-0">
-            <p className="text-[9px] font-semibold text-white/35 uppercase tracking-wider">Status</p>
-            <p className="text-sm font-semibold truncate">
-              {s.installed ? 'Installed' : 'Not installed'}
-              {s.previewInstalled ? ' · Preview OK' : ''}
-            </p>
-            <p className="text-[11px] text-white/40 line-clamp-2">{s.message}</p>
+      {/* Profile row — Dawn style: selected profile | PLAY */}
+      <div className="flex items-stretch gap-2.5 relative">
+        <button
+          type="button"
+          onClick={() => setShowPicker((v) => !v)}
+          className="flex items-center gap-3 h-[72px] flex-1 min-w-0 px-3.5 rounded-[16px] bg-[#121722] border border-white/[0.06] hover:border-white/12 transition text-left"
+        >
+          <div
+            className={`w-12 h-12 rounded-[12px] flex items-center justify-center text-sm font-black shrink-0 ring-1 ring-white/10 ${
+              profile === 'release'
+                ? 'bg-gradient-to-br from-emerald-400 to-teal-700'
+                : 'bg-gradient-to-br from-violet-400 to-indigo-700'
+            }`}
+          >
+            {profile === 'release' ? 'R' : 'P'}
           </div>
-        </div>
-
-        <label className="h-[72px] px-4 rounded-[16px] bg-[#121722] border border-white/[0.06] flex items-center gap-2 text-xs cursor-pointer">
-          <input
-            type="checkbox"
-            checked={preview}
-            onChange={(e) => setPreview(e.target.checked)}
-            className="rounded"
-          />
-          Preview
-        </label>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-semibold text-white/35 uppercase tracking-[0.14em]">
+              Selected Profile
+            </p>
+            <p className="text-[15px] font-bold truncate leading-tight mt-0.5">{profileLabel}</p>
+            <p className="text-[11px] text-white/40 truncate flex items-center gap-1.5">
+              {selectedInstalled ? (
+                <CheckCircle2 size={11} className="text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle size={11} className="text-amber-400 shrink-0" />
+              )}
+              {profileSub}
+            </p>
+          </div>
+          <ChevronDown size={16} className="text-white/25 shrink-0" />
+        </button>
 
         <button
           onClick={handlePlay}
           disabled={launching || !s.supported}
-          className="h-[72px] flex-[1.15] min-w-[220px] rounded-[16px] bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-200 text-[#0a1520] font-black text-[18px] flex items-center justify-center gap-3 shadow-[0_8px_32px_rgba(52,211,153,0.2)] hover:brightness-105 disabled:opacity-50"
+          className="h-[72px] flex-[1.15] min-w-[220px] rounded-[16px] bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-200 text-[#0a1520] font-black text-[18px] tracking-wide flex items-center justify-center gap-3 shadow-[0_8px_32px_rgba(52,211,153,0.22)] hover:brightness-105 active:scale-[0.99] transition disabled:opacity-50"
         >
           {launching ? <Loader2 className="animate-spin" size={22} /> : <Play size={22} fill="currentColor" />}
-          PLAY BEDROCK
+          PLAY
+          <span className="text-[11px] font-bold opacity-55">{profileLabel}</span>
         </button>
+
+        {/* Profile picker dropdown */}
+        {showPicker && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+            <div className="absolute left-0 top-[80px] z-50 w-full max-w-md rounded-2xl border border-white/10 bg-[#121722] shadow-2xl overflow-hidden">
+              <p className="px-4 pt-3 pb-2 text-[10px] font-semibold text-white/35 uppercase tracking-wider">
+                Bedrock profiles
+              </p>
+              {(
+                [
+                  {
+                    id: 'release' as const,
+                    title: 'RELEASE',
+                    desc: 'Minecraft for Windows · stable Store build',
+                    ok: s.installed,
+                  },
+                  {
+                    id: 'preview' as const,
+                    title: 'PREVIEW',
+                    desc: 'Minecraft Preview · beta features',
+                    ok: s.previewInstalled,
+                  },
+                ] as const
+              ).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setProfile(p.id)
+                    setShowPicker(false)
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition ${
+                    profile === p.id ? 'bg-white/[0.06]' : ''
+                  }`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${
+                      p.id === 'release'
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : 'bg-violet-500/20 text-violet-300'
+                    }`}
+                  >
+                    {p.title[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">{p.title}</p>
+                    <p className="text-[11px] text-white/40 truncate">{p.desc}</p>
+                  </div>
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      p.ok
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : 'bg-white/5 text-white/35'
+                    }`}
+                  >
+                    {p.ok ? 'Installed' : 'Missing'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {msg && (
-        <p className={`text-[11px] px-1 ${msg.includes('Launched') ? 'text-emerald-400' : 'text-amber-300'}`}>
+        <p
+          className={`text-[11px] px-1 ${
+            msg.includes('Started') ? 'text-emerald-400' : 'text-amber-300'
+          }`}
+        >
           {msg}
         </p>
       )}
 
-      {/* Actions */}
+      {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <button
           onClick={() => window.crystal.openBedrockStore()}
@@ -184,7 +282,7 @@ export default function BedrockPage() {
           </div>
           <div>
             <p className="text-sm font-bold">Microsoft Store</p>
-            <p className="text-[11px] text-white/40">Install / update Bedrock</p>
+            <p className="text-[11px] text-white/40">Install Release / Preview</p>
           </div>
           <ExternalLink size={14} className="ml-auto text-white/25" />
         </button>
@@ -197,8 +295,8 @@ export default function BedrockPage() {
             <Gamepad2 size={18} className="text-green-400" />
           </div>
           <div>
-            <p className="text-sm font-bold">Xbox App</p>
-            <p className="text-[11px] text-white/40">Microsoft account · Game Pass</p>
+            <p className="text-sm font-bold">Xbox</p>
+            <p className="text-[11px] text-white/40">Account · Game Pass</p>
           </div>
           <ExternalLink size={14} className="ml-auto text-white/25" />
         </button>
@@ -211,25 +309,23 @@ export default function BedrockPage() {
             <Loader2 size={18} className="text-white/50" />
           </div>
           <div>
-            <p className="text-sm font-bold">Refresh status</p>
-            <p className="text-[11px] text-white/40">Re-check package install</p>
+            <p className="text-sm font-bold">Refresh</p>
+            <p className="text-[11px] text-white/40">Check install status</p>
           </div>
         </button>
       </div>
 
       {!s.supported && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100/80">
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm">
           <p className="font-semibold text-amber-300 mb-1">Windows 10 / 11 required</p>
           <p className="text-[12px] text-white/50">
-            Bedrock Microsoft Store overlay Win7 pe possible nahi. Java Edition use karo.
-            Multi-version Bedrock (side-by-side) advanced tools jaise MC-W10-Version-Launcher se hota
-            hai — Crystal abhi official Store app launch karta hai.
+            Dawn jaisa Bedrock yahan bhi Microsoft Store apps pe chalta hai. Win7 pe sirf Java Edition.
           </p>
         </div>
       )}
 
       <p className="text-[10px] text-white/25 px-1">
-        Launch uses minecraft:// protocol + shell:AppsFolder · login Xbox / Microsoft Store account se
+        Dawn-style: sirf RELEASE + PREVIEW · game Microsoft / Xbox login se alag window mein khulta hai
       </p>
     </div>
   )
