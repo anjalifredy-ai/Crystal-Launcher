@@ -52,6 +52,11 @@ contextBridge.exposeInMainWorld('crystal', {
 
   installLoader: (loader: string, mcVersion: string, loaderVersion: string | null) =>
     ipcRenderer.invoke('loader:install', loader, mcVersion, loaderVersion),
+  /** Fabric/Quilt + Sodium stack in one call */
+  installOptimized: (mcVersion: string, loader: 'fabric' | 'quilt' = 'fabric') =>
+    ipcRenderer.invoke('loader:installOptimized', mcVersion, loader),
+  installOptimizePackOnly: (mcVersion: string, loader: 'fabric' | 'quilt' = 'fabric') =>
+    ipcRenderer.invoke('optimize:installPack', mcVersion, loader),
   onLoaderProgress: (cb: any) => {
     const l = (_: any, d: any) => cb(d)
     ipcRenderer.on('loader:progress', l)
