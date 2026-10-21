@@ -39,6 +39,7 @@ import {
   openBedrockStorePage,
   openXboxApp,
 } from './bedrock'
+import { installCrystalOptimized } from './optimizePack'
 
 let mainWindow: BrowserWindow | null = null
 const isDev = !app.isPackaged
@@ -175,6 +176,34 @@ ipcMain.handle(
   }
 )
 
+/** Fabric + performance pack in one go */
+ipcMain.handle(
+  'loader:installOptimized',
+  async (_e, mcVersion: string, loader: 'fabric' | 'quilt' = 'fabric') => {
+    const send = (stage: string, percent: number) => {
+      mainWindow?.webContents.send('loader:progress', { stage, percent })
+    }
+    const loaderRes = await installLoaderProfile(loader, mcVersion, null, send)
+    if (!loaderRes.success) return loaderRes
+
+    const pack = await installCrystalOptimized(mcVersion, loader, send)
+    return {
+      success: true,
+      versionId: loaderRes.versionId,
+      optimized: pack,
+    }
+  }
+)
+
+ipcMain.handle(
+  'optimize:installPack',
+  async (_e, mcVersion: string, loader: 'fabric' | 'quilt' = 'fabric') => {
+    return installCrystalOptimized(mcVersion, loader, (stage, percent) => {
+      mainWindow?.webContents.send('loader:progress', { stage, percent })
+    })
+  }
+)
+
 ipcMain.handle('profiles:list', () => listProfiles())
 ipcMain.handle('profiles:active', () => getActiveProfile())
 ipcMain.handle('profiles:upsert', (_e, data: any) => ({ success: true, profile: upsertProfile(data) }))
@@ -184,7 +213,6 @@ ipcMain.handle('profiles:setLaunchVersion', (_e, id: string, launchVersionId: st
   profile: setProfileLaunchVersion(id, launchVersionId),
 }))
 
-// Bedrock + Microsoft overlay
 ipcMain.handle('bedrock:status', () => getBedrockStatus())
 ipcMain.handle('bedrock:launch', (_e, preview?: boolean) => launchBedrock({ preview: !!preview }))
 ipcMain.handle('bedrock:openStore', () => openBedrockStorePage())
